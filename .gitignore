@@ -1,0 +1,10 @@
+# Real secrets and keys are never committed; only *.example.yaml templates are.
+manifests/040-secrets/*.yaml
+!manifests/040-secrets/*.example.yaml
+manifests/500-dataplane-secrets/*.yaml
+!manifests/500-dataplane-secrets/*.example.yaml
+manifests/500-dataplane-secrets/*_key
+manifests/500-dataplane-secrets/*-key
+manifests/500-dataplane-secrets/*.pub
+*.pem
+kubeconfig*
