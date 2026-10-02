@@ -12,6 +12,21 @@ spec:
     template:
       databaseInstance: openstack
       secret: osp-secret
+      extraMounts:
+      - name: ceph
+        region: r1
+        extraVol:
+        - extraVolType: Ceph
+          propagation:
+          - CinderVolume
+          volumes:
+          - name: ceph
+            secret:
+              secretName: ceph-conf-files
+          mounts:
+          - name: ceph
+            mountPath: /etc/ceph
+            readOnly: true
       cinderAPI:
         replicas: 3
         override:
@@ -34,7 +49,17 @@ spec:
         volume1:
           networkAttachments:
           - storage
-          replicas: 0 # backend needs to be configured to activate the service
+          customServiceConfig: |
+            [DEFAULT]
+            enabled_backends = ceph
+            [ceph]
+            volume_driver = cinder.volume.drivers.rbd.RBDDriver
+            volume_backend_name = ceph
+            rbd_pool = volumes
+            rbd_user = openstack
+            rbd_ceph_conf = /etc/ceph/ceph.conf
+            rbd_secret_uuid = d8e5e426-bd8f-11f1-ad88-08f1ea76b8c8
+          replicas: 1
   nova:
     apiOverride:
       route: {}

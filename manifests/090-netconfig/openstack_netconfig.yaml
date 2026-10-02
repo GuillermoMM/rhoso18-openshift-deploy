@@ -47,3 +47,33 @@ spec:
         nexthop: 192.168.124.1
       - destination: 192.168.123.0/24
         nexthop: 192.168.124.1
+  - name: internalapi
+    dnsDomain: internalapi.example.com
+    mtu: 1500
+    subnets:
+    - name: subnet1
+      cidr: 172.17.0.0/24
+      vlan: 20
+      allocationRanges:
+      - start: 172.17.0.100
+        end: 172.17.0.250
+  - name: storage
+    dnsDomain: storage.example.com
+    mtu: 1500
+    subnets:
+    - name: subnet1
+      cidr: 172.18.0.0/24
+      vlan: 21
+      allocationRanges:
+      - start: 172.18.0.100
+        end: 172.18.0.250
+  - name: tenant
+    dnsDomain: tenant.example.com
+    mtu: 1500
+    subnets:
+    - name: subnet1
+      cidr: 172.19.0.0/24
+      vlan: 22
+      allocationRanges:
+      - start: 172.19.0.100
+        end: 172.19.0.250

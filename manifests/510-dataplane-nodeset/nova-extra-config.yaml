@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nova-extra-config
+  namespace: openstack
+data:
+  03-ceph-nova.conf: |
+    [DEFAULT]
+    reserved_host_memory_mb = 8192
+    [libvirt]
+    images_type = rbd
+    images_rbd_pool = vms
+    images_rbd_ceph_conf = /etc/ceph/ceph.conf
+    rbd_user = openstack
+    rbd_secret_uuid = d8e5e426-bd8f-11f1-ad88-08f1ea76b8c8

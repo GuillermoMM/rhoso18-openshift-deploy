@@ -144,4 +144,6 @@ openstack endpoint list
 
 - FIPS cannot be enabled after installation. It must be set at OpenShift install time (`fips: true`).
 - LVMS storage is node-local. Galera, RabbitMQ, and OVN replicate across nodes; Swift and Glance data on LVMS is not replicated.
-- Compute nodes are deployed separately with `OpenStackDataPlaneNodeSet` / `OpenStackDataPlaneDeployment` (not included yet).
+- The Cinder `volume1` backend uses the external Ceph `volumes` RBD pool. It requires the separately provisioned `ceph-conf-files` Secret and the `ceph-hci-pre` EDPM firewall rules; neither credential is stored in git. The current single-OSD pool has `size=1` and no redundancy.
+- Glance and Swift have not been migrated to Ceph. The compute NodeSet runs `ceph-client` before libvirt/Nova; the built-in Nova service reads `nova-extra-config` to place new instance disks in the `vms` RBD pool. The libvirt FSID secret is configured and Nova reserves 8 GiB of RAM for the collocated Ceph daemons. Glance currently has no API replicas, so VM boot/volume attachment has not been exercised.
+- Compute nodes are deployed separately with `OpenStackDataPlaneNodeSet` / `OpenStackDataPlaneDeployment`; see `manifests/510-dataplane-nodeset/`.
