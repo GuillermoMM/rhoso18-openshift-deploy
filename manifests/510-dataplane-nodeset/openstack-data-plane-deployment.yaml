@@ -1,9 +1,769 @@
-apiVersion: dataplane.openstack.org/v1beta1
-kind: OpenStackDataPlaneDeployment
+apiVersion: v1
+items:
+- apiVersion: dataplane.openstack.org/v1beta1
+  kind: OpenStackDataPlaneNodeSet
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"dataplane.openstack.org/v1beta1","kind":"OpenStackDataPlaneNodeSet","metadata":{"annotations":{},"name":"openstack-data-plane","namespace":"openstack"},"spec":{"env":[{"name":"ANSIBLE_FORCE_COLOR","value":"True"}],"networkAttachments":["ctlplane"],"nodeTemplate":{"ansible":{"ansiblePort":22,"ansibleUser":"root","ansibleVars":{"edpm_bootstrap_legacy_network_packages":[],"edpm_bootstrap_packages_bootstrap":["driverctl","lvm2"],"edpm_bootstrap_release_version_package":[],"edpm_network_config_template":"---\n{% set mtu_list = [ctlplane_mtu] %}\n{% for network in nodeset_networks %}\n{{ mtu_list.append(lookup('vars', networks_lower[network] ~ '_mtu')) }}\n{%- endfor %}\n{% set min_viable_mtu = mtu_list | max %}\ninterfaces:\n- name: eno2\n  type: ethernet\n  state: up\n  mtu: {{ min_viable_mtu }}\n- name: {{ neutron_physical_bridge_name }}\n  type: ovs-bridge\n  state: up\n  bridge:\n    port:\n    - name: eno2\n    - name: {{ neutron_physical_bridge_name }}\n{% for network in nodeset_networks %}\n    - name: {{ networks_lower[network] }}\n      vlan:\n        mode: access\n        tag: {{ lookup('vars', networks_lower[network] ~ '_vlan_id') }}\n{% endfor %}\n- name: {{ neutron_physical_bridge_name }}\n  type: ovs-interface\n  state: up\n  mtu: {{ ctlplane_mtu }}\n  ipv4:\n    address:\n    - ip: {{ ctlplane_ip }}\n      prefix-length: {{ ctlplane_cidr }}\n    enabled: true\n    dhcp: false\n{% for network in nodeset_networks %}\n- name: {{ networks_lower[network] }}\n  type: ovs-interface\n  state: up\n  mtu: {{ lookup('vars', networks_lower[network] ~ '_mtu') }}\n  ipv4:\n    address:\n    - ip: {{ lookup('vars', networks_lower[network] ~ '_ip') }}\n      prefix-length: {{ lookup('vars', networks_lower[network] ~ '_cidr') }}\n    enabled: true\n    dhcp: false\n{% endfor %}\n","edpm_network_config_tool":"nmstate","edpm_network_config_tool_nmstate_override":true,"edpm_network_config_update":false,"edpm_ovs_packages":["openvswitch3.3"],"neutron_physical_bridge_mappings":["datacentre:br-ex"],"neutron_physical_bridge_name":"br-ex","rhc_release":"9.4","rhc_repositories":[{"name":"*","state":"disabled"},{"name":"rhel-9-for-x86_64-baseos-eus-rpms","state":"enabled"},{"name":"rhel-9-for-x86_64-appstream-eus-rpms","state":"enabled"},{"name":"rhel-9-for-x86_64-highavailability-eus-rpms","state":"enabled"},{"name":"fast-datapath-for-rhel-9-x86_64-rpms","state":"enabled"},{"name":"rhceph-7-tools-for-rhel-9-x86_64-rpms","state":"enabled"},{"name":"rhoso-tools-18-for-rhel-9-x86_64-rpms","state":"enabled"}],"timesync_ntp_servers":[{"hostname":"2.rhel.pool.ntp.org","iburst":true}]},"ansibleVarsFrom":[{"secretRef":{"name":"subscription-manager"}},{"secretRef":{"name":"redhat-registry"}}]},"ansibleSSHPrivateKeySecret":"dataplane-ansible-ssh-private-key-secret","managementNetwork":"ctlplane"},"nodes":{"edpm-compute-0":{"ansible":{"ansibleHost":"192.168.122.100","ansibleUser":"root","ansibleVars":{"fqdn_internal_api":"edpm-compute-0.internalapi.example.com"}},"hostName":"edpm-compute-0","networks":[{"defaultRoute":false,"fixedIP":"192.168.122.100","name":"ctlplane","subnetName":"subnet1"},{"fixedIP":"172.17.0.100","name":"internalapi","subnetName":"subnet1"},{"fixedIP":"172.18.0.100","name":"storage","subnetName":"subnet1"},{"fixedIP":"172.19.0.100","name":"tenant","subnetName":"subnet1"}]}},"preProvisioned":true}}
+      openstack.org/playbook-rerun-execution-only: "true"
+    creationTimestamp: "2026-09-30T15:36:15Z"
+    generation: 26
+    labels:
+      backup.openstack.org/category: dataplane
+      backup.openstack.org/restore: "true"
+      backup.openstack.org/restore-order: "60"
+    name: openstack-data-plane
+    namespace: openstack
+    resourceVersion: "22235335"
+    uid: a584ac8b-eeb9-4ad1-9599-6121abaa45fd
+  spec:
+    env:
+    - name: ANSIBLE_FORCE_COLOR
+      value: "True"
+    networkAttachments:
+    - ctlplane
+    nodeTemplate:
+      ansible:
+        ansiblePort: 22
+        ansibleUser: root
+        ansibleVars:
+          edpm_bootstrap_legacy_network_packages: []
+          edpm_bootstrap_packages_bootstrap:
+          - driverctl
+          - lvm2
+          edpm_bootstrap_release_version_package: []
+          edpm_ceph_hci_pre_enabled_services:
+          - ceph_mon
+          - ceph_mgr
+          - ceph_osd
+          edpm_ceph_hci_pre_storage_ranges:
+          - 172.18.0.0/24
+          edpm_network_config_template: |
+            ---
+            {% set mtu_list = [ctlplane_mtu] %}
+            {% for network in nodeset_networks %}
+            {{ mtu_list.append(lookup('vars', networks_lower[network] ~ '_mtu')) }}
+            {%- endfor %}
+            {% set min_viable_mtu = mtu_list | max %}
+            interfaces:
+            - name: eno2
+              type: ethernet
+              state: up
+              mtu: {{ min_viable_mtu }}
+            - name: br-ex
+              type: ovs-bridge
+              state: up
+              bridge:
+                port:
+                - name: eno2
+                - name: br-ex
+            {% for network in nodeset_networks if network if network != 'tenant' %}
+                - name: {{ networks_lower[network] }}
+                  vlan:
+                    mode: access
+                    tag: {{ lookup('vars', networks_lower[network] ~ '_vlan_id') }}
+            {% endfor %}
+            - name: ens3f0np0
+              type: ethernet
+              state: up
+              mtu: {{ tenant_mtu }}
+            - name: ens3f1np1
+              type: ethernet
+              state: up
+              mtu: {{ tenant_mtu }}
+            - name: bond-tenant
+              type: bond
+              state: up
+              mtu: {{ tenant_mtu }}
+              link-aggregation:
+                mode: active-backup
+                port:
+                  - ens3f0np0
+                  - ens3f1np1
+            - name: br-tenant
+              type: ovs-bridge
+              state: up
+              bridge:
+                port:
+                - name: bond-tenant
+                - name: br-tenant
+                - name: tenant
+            - name: {{ neutron_physical_bridge_name }}
+              type: ovs-interface
+              state: up
+              mtu: {{ ctlplane_mtu }}
+              ipv4:
+                address:
+                - ip: {{ ctlplane_ip }}
+                  prefix-length: {{ ctlplane_cidr }}
+                enabled: true
+                dhcp: false
+            {% for network in nodeset_networks if network != 'tenant' %}
+            - name: {{ networks_lower[network] }}
+              type: ovs-interface
+              state: up
+              mtu: {{ lookup('vars', networks_lower[network] ~ '_mtu') }}
+              ipv4:
+                address:
+                - ip: {{ lookup('vars', networks_lower[network] ~ '_ip') }}
+                  prefix-length: {{ lookup('vars', networks_lower[network] ~ '_cidr') }}
+                enabled: true
+                dhcp: false
+            {% endfor %}
+            - name: tenant
+              type: ovs-interface
+              state: up
+              mtu: {{ tenant_mtu }}
+              controller: br-tenant
+              ipv4:
+                address:
+                - ip: {{ tenant_ip }}
+                  prefix-length: {{ tenant_cidr }}
+                enabled: true
+                dhcp: false
+          edpm_network_config_tool: nmstate
+          edpm_network_config_tool_nmstate_override: true
+          edpm_network_config_update: false
+          edpm_ovn_bridge_mappings: datacentre:br-tenant
+          edpm_ovn_chassis_type: gateway
+          edpm_ovn_encap_network: tenant
+          edpm_ovs_packages:
+          - openvswitch3.3
+          neutron_physical_bridge_mappings:
+          - datacentre:br-tenant
+          neutron_physical_bridge_name: br-ex
+          rhc_release: "9.4"
+          rhc_repositories:
+          - name: '*'
+            state: disabled
+          - name: rhel-9-for-x86_64-baseos-eus-rpms
+            state: enabled
+          - name: rhel-9-for-x86_64-appstream-eus-rpms
+            state: enabled
+          - name: rhel-9-for-x86_64-highavailability-eus-rpms
+            state: enabled
+          - name: fast-datapath-for-rhel-9-x86_64-rpms
+            state: enabled
+          - name: rhceph-7-tools-for-rhel-9-x86_64-rpms
+            state: enabled
+          - name: rhoso-tools-18-for-rhel-9-x86_64-rpms
+            state: enabled
+          tenant_mtu: 9000
+          timesync_ntp_servers:
+          - hostname: 2.rhel.pool.ntp.org
+            iburst: true
+        ansibleVarsFrom:
+        - secretRef:
+            name: subscription-manager
+        - secretRef:
+            name: redhat-registry
+      ansibleSSHPrivateKeySecret: dataplane-ansible-ssh-private-key-secret
+      extraMounts:
+      - extraVolType: Ceph
+        mounts:
+        - mountPath: /etc/ceph
+          name: ceph
+          readOnly: true
+        volumes:
+        - name: ceph
+          secret:
+            secretName: ceph-conf-files
+      managementNetwork: ctlplane
+    nodes:
+      edpm-compute-0:
+        ansible:
+          ansibleHost: 192.168.122.100
+          ansibleUser: root
+          ansibleVars:
+            fqdn_internal_api: edpm-compute-0.internalapi.example.com
+        hostName: edpm-compute-0
+        networks:
+        - defaultRoute: false
+          fixedIP: 192.168.122.100
+          name: ctlplane
+          subnetName: subnet1
+        - fixedIP: 172.17.0.100
+          name: internalapi
+          subnetName: subnet1
+        - fixedIP: 172.18.0.100
+          name: storage
+          subnetName: subnet1
+        - fixedIP: 172.19.0.100
+          name: tenant
+          subnetName: subnet1
+      edpm-compute-1:
+        ansible:
+          ansibleHost: 192.168.122.101
+          ansibleUser: root
+          ansibleVars:
+            fqdn_internal_api: edpm-compute-1.internalapi.example.com
+        hostName: edpm-compute-1
+        networks:
+        - defaultRoute: false
+          fixedIP: 192.168.122.101
+          name: ctlplane
+          subnetName: subnet1
+        - fixedIP: 172.17.0.101
+          name: internalapi
+          subnetName: subnet1
+        - fixedIP: 172.18.0.101
+          name: storage
+          subnetName: subnet1
+        - fixedIP: 172.19.0.101
+          name: tenant
+          subnetName: subnet1
+    preProvisioned: true
+    secretMaxSize: 1048576
+    services:
+    - redhat
+    - download-cache
+    - bootstrap
+    - configure-network
+    - validate-network
+    - install-os
+    - ceph-hci-pre
+    - configure-os
+    - ssh-known-hosts
+    - run-os
+    - reboot-os
+    - install-certs
+    - ceph-client
+    - ovn
+    - neutron-metadata
+    - edpm-lldp-service
+    - libvirt
+    - nova
+    - telemetry
+    tlsEnabled: true
+  status:
+    allHostnames:
+      edpm-compute-0:
+        ctlplane: edpm-compute-0.ctlplane.example.com
+        internalapi: edpm-compute-0.internalapi.example.com
+        storage: edpm-compute-0.storage.example.com
+        tenant: edpm-compute-0.tenant.example.com
+      edpm-compute-1:
+        ctlplane: edpm-compute-1.ctlplane.example.com
+        internalapi: edpm-compute-1.internalapi.example.com
+        storage: edpm-compute-1.storage.example.com
+        tenant: edpm-compute-1.tenant.example.com
+    allIPs:
+      edpm-compute-0:
+        ctlplane: 192.168.122.100
+        internalapi: 172.17.0.100
+        storage: 172.18.0.100
+        tenant: 172.19.0.100
+      edpm-compute-1:
+        ctlplane: 192.168.122.101
+        internalapi: 172.17.0.101
+        storage: 172.18.0.101
+        tenant: 172.19.0.101
+    conditions:
+    - lastTransitionTime: "2026-10-26T16:59:24Z"
+      message: NodeSet Ready
+      reason: Ready
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2026-10-26T16:59:24Z"
+      message: Deployment completed
+      reason: Ready
+      status: "True"
+      type: DeploymentReady
+    - lastTransitionTime: "2026-10-12T12:59:02Z"
+      message: Input data complete
+      reason: Ready
+      status: "True"
+      type: InputReady
+    - lastTransitionTime: "2026-10-12T12:59:02Z"
+      message: NodeSetDNSDataReady ready
+      reason: Ready
+      status: "True"
+      type: NodeSetDNSDataReady
+    - lastTransitionTime: "2026-09-30T15:36:16Z"
+      message: NodeSetIPReservationReady ready
+      reason: Ready
+      status: "True"
+      type: NodeSetIPReservationReady
+    - lastTransitionTime: "2026-10-12T12:59:02Z"
+      message: ServiceAccount created
+      reason: Ready
+      status: "True"
+      type: ServiceAccountReady
+    - lastTransitionTime: "2026-10-12T12:59:02Z"
+      message: Setup complete
+      reason: Ready
+      status: "True"
+      type: SetupReady
+    configHash: nfh57ch68fh55h5f4h9bh568hf5h556hc4h5b6h676h57dh597h54dh55fh7fh95h7bh679h657h54bh64fh74h5dch576h65bh586hdbh5dh68fh69q
+    configMapHashes:
+      nova-extra-config: n99hdbh5d5h5bbh87hc7h6fh5h664h54h5b4hb5h555h54ch694h648h666hdbh565h5b9h8dh59fh54h68h56bh598h597h65bhbbhbhf7h94q
+      ovncontroller-config: n64bh5c7h679h644h595h56bh88h5fdhc5h9bh5fdh594h688h5c5hf9h595h5dch65ch66fh5dfh649h5f6h599h575h9chb8h577h8ch66ch54fh8dh656q
+    containerImages:
+      CeilometerComputeImage: registry.redhat.io/rhoso/openstack-ceilometer-compute-rhel9@sha256:0987123d8da5eabf35626509853c525d940aba23a96f192724f9e0a0fe72fff8
+      EdpmIscsidImage: registry.redhat.io/rhoso/openstack-iscsid-rhel9@sha256:d7a0cb3331fc5d27958957efa02661a6f8e647607c73aac1a71f71043833baca
+      EdpmLogrotateCrondImage: registry.redhat.io/rhoso/openstack-cron-rhel9@sha256:001020f348bfeb7fdd0c3acf0f01c60eaf4da69af87160454fcd14d8cbbeee26
+      EdpmNeutronMetadataAgentImage: registry.redhat.io/rhoso/openstack-neutron-metadata-agent-ovn-rhel9@sha256:b224ee3ff1dd3ea85129f07ac8be6f07350b2750223c46618c8fd3d4a2fceab2
+      EdpmNodeExporterImage: registry.redhat.io/openshift4/ose-prometheus-node-exporter-rhel9:v4.16@sha256:077ea3c574d2efb7b463daf1908838a0883b1abcb626831ecb3d6df498154305
+      NovaComputeImage: registry.redhat.io/rhoso/openstack-nova-compute-rhel9@sha256:c36b98a728ebfd3ef0c2084eacb99cbe9cf95cd40ef9347f578c8b98a71f2928
+      OvnControllerImage: registry.redhat.io/rhoso/openstack-ovn-controller-rhel9@sha256:9713ab7bb69c6a1577ac06f0560d478f3372847314b84caed852e9fe4b7b78bb
+    ctlplaneSearchDomain: ctlplane.example.com
+    deployedConfigHash: nfh57ch68fh55h5f4h9bh568hf5h556hc4h5b6h676h57dh597h54dh55fh7fh95h7bh679h657h54bh64fh74h5dch576h65bh586hdbh5dh68fh69q
+    deploymentExecutionSummaries:
+      openstack-ceph-client:
+        ceph-client-openstack-ceph-client-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 1
+          unreachableHostList: []
+          unreachableHosts: 0
+      openstack-ceph-firewall:
+        ceph-hci-pre-openstack-ceph-firewall-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 1
+          unreachableHostList: []
+          unreachableHosts: 0
+        run-os-openstack-ceph-firewall-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 1
+          unreachableHostList: []
+          unreachableHosts: 0
+      openstack-ceph-firewall-apply:
+        configure-os-openstack-ceph-firewall-apply-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 1
+          unreachableHostList: []
+          unreachableHosts: 0
+        run-os-openstack-ceph-firewall-apply-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 1
+          unreachableHostList: []
+          unreachableHosts: 0
+      openstack-ceph-libvirt:
+        libvirt-openstack-ceph-libvirt-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 1
+          unreachableHostList: []
+          unreachableHosts: 0
+      openstack-ceph-nova:
+        nova-openstack-ceph-nova-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 1
+          unreachableHostList: []
+          unreachableHosts: 0
+      openstack-ceph-nova-memory:
+        nova-openstack-ceph-nova-memory-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 1
+          unreachableHostList: []
+          unreachableHosts: 0
+      openstack-compute-1-deploy:
+        bootstrap-openstack-compute-1-deploy-openstack-data-plane:
+          failedHostList:
+          - edpm-compute-1
+          failedHosts: 1
+          failurePercent: 100
+          totalHosts: 1
+          unreachableHostList: []
+          unreachableHosts: 0
+        download-cache-openstack-compute-1-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 1
+          unreachableHostList: []
+          unreachableHosts: 0
+      openstack-compute-1-register:
+        redhat-openstack-compute-1-register-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 1
+          unreachableHostList: []
+          unreachableHosts: 0
+      openstack-data-plane-deploy:
+        bootstrap-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        ceph-client-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        ceph-hci-pre-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        configure-network-openstack-data-plane-deploy-openstac-8eb43bd2:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        configure-os-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        download-cache-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        edpm-lldp-service-openstack-data-plane-deploy-openstac-41c5f359:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        install-certs-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        install-os-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        libvirt-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        neutron-metadata-openstack-data-plane-deploy-openstack-bd02ca3c:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        nova-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        ovn-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        reboot-os-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        redhat-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        run-os-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        ssh-known-hosts-openstack-data-plane-deploy:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        telemetry-openstack-data-plane-deploy-openstack-data-plane:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+        validate-network-openstack-data-plane-deploy-openstack-18ce0e36:
+          failedHostList: []
+          failedHosts: 0
+          failurePercent: 0
+          totalHosts: 2
+          unreachableHostList: []
+          unreachableHosts: 0
+    deploymentStatuses:
+      openstack-ceph-client:
+      - lastTransitionTime: "2026-10-01T12:36:35Z"
+        message: Deployment completed
+        reason: Ready
+        status: "True"
+        type: NodeSetDeploymentReady
+      - lastTransitionTime: "2026-10-01T12:36:35Z"
+        message: Deployment ready for ceph-client service
+        reason: Ready
+        status: "True"
+        type: ServiceCephClientDeploymentReady
+      openstack-ceph-firewall:
+      - lastTransitionTime: "2026-10-01T12:21:31Z"
+        message: Deployment completed
+        reason: Ready
+        status: "True"
+        type: NodeSetDeploymentReady
+      - lastTransitionTime: "2026-10-01T12:21:31Z"
+        message: Deployment ready for ceph-hci-pre service
+        reason: Ready
+        status: "True"
+        type: ServiceCephHciPreDeploymentReady
+      - lastTransitionTime: "2026-10-01T12:21:31Z"
+        message: Deployment ready for run-os service
+        reason: Ready
+        status: "True"
+        type: ServiceRunOsDeploymentReady
+      openstack-ceph-firewall-apply:
+      - lastTransitionTime: "2026-10-01T12:28:21Z"
+        message: Deployment completed
+        reason: Ready
+        status: "True"
+        type: NodeSetDeploymentReady
+      - lastTransitionTime: "2026-10-01T12:28:21Z"
+        message: Deployment ready for configure-os service
+        reason: Ready
+        status: "True"
+        type: ServiceConfigureOsDeploymentReady
+      - lastTransitionTime: "2026-10-01T12:28:21Z"
+        message: Deployment ready for run-os service
+        reason: Ready
+        status: "True"
+        type: ServiceRunOsDeploymentReady
+      openstack-ceph-libvirt:
+      - lastTransitionTime: "2026-10-01T12:42:09Z"
+        message: Deployment completed
+        reason: Ready
+        status: "True"
+        type: NodeSetDeploymentReady
+      - lastTransitionTime: "2026-10-01T12:42:09Z"
+        message: Deployment ready for libvirt service
+        reason: Ready
+        status: "True"
+        type: ServiceLibvirtDeploymentReady
+      openstack-ceph-nova:
+      - lastTransitionTime: "2026-10-01T12:44:41Z"
+        message: Deployment completed
+        reason: Ready
+        status: "True"
+        type: NodeSetDeploymentReady
+      - lastTransitionTime: "2026-10-01T12:44:41Z"
+        message: Deployment ready for nova service
+        reason: Ready
+        status: "True"
+        type: ServiceNovaDeploymentReady
+      openstack-ceph-nova-memory:
+      - lastTransitionTime: "2026-10-01T12:47:19Z"
+        message: Deployment completed
+        reason: Ready
+        status: "True"
+        type: NodeSetDeploymentReady
+      - lastTransitionTime: "2026-10-01T12:47:19Z"
+        message: Deployment ready for nova service
+        reason: Ready
+        status: "True"
+        type: ServiceNovaDeploymentReady
+      openstack-compute-1-deploy:
+      - lastTransitionTime: "2026-10-01T18:10:23Z"
+        message: 'Deployment error occurred in bootstrap service error backoff limit
+          reached for execution.name bootstrap-openstack-compute-1-deploy-openstack-data-plane
+          execution.namespace openstack execution.condition.message: Job has reached
+          the specified backoff limit'
+        reason: BackoffLimitExceeded
+        severity: Error
+        status: "False"
+        type: NodeSetDeploymentReady
+      - lastTransitionTime: "2026-10-01T18:10:23Z"
+        message: 'Deployment error occurred in bootstrap service error backoff limit
+          reached for execution.name bootstrap-openstack-compute-1-deploy-openstack-data-plane
+          execution.namespace openstack execution.condition.message: Job has reached
+          the specified backoff limit'
+        reason: BackoffLimitExceeded
+        severity: Error
+        status: "False"
+        type: ServiceBootstrapDeploymentReady
+      - lastTransitionTime: "2026-10-01T18:10:23Z"
+        message: Deployment ready for download-cache service
+        reason: Ready
+        status: "True"
+        type: ServiceDownloadCacheDeploymentReady
+      openstack-compute-1-register:
+      - lastTransitionTime: "2026-10-01T16:50:35Z"
+        message: Deployment completed
+        reason: Ready
+        status: "True"
+        type: NodeSetDeploymentReady
+      - lastTransitionTime: "2026-10-01T16:50:35Z"
+        message: Deployment ready for redhat service
+        reason: Ready
+        status: "True"
+        type: ServiceRedhatDeploymentReady
+      openstack-data-plane-deploy:
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment completed
+        reason: Ready
+        status: "True"
+        type: NodeSetDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for bootstrap service
+        reason: Ready
+        status: "True"
+        type: ServiceBootstrapDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for ceph-client service
+        reason: Ready
+        status: "True"
+        type: ServiceCephClientDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for ceph-hci-pre service
+        reason: Ready
+        status: "True"
+        type: ServiceCephHciPreDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for configure-network service
+        reason: Ready
+        status: "True"
+        type: ServiceConfigureNetworkDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for configure-os service
+        reason: Ready
+        status: "True"
+        type: ServiceConfigureOsDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for download-cache service
+        reason: Ready
+        status: "True"
+        type: ServiceDownloadCacheDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for edpm-lldp-service service
+        reason: Ready
+        status: "True"
+        type: ServiceEdpmLldpServiceDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for install-certs service
+        reason: Ready
+        status: "True"
+        type: ServiceInstallCertsDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for install-os service
+        reason: Ready
+        status: "True"
+        type: ServiceInstallOsDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for libvirt service
+        reason: Ready
+        status: "True"
+        type: ServiceLibvirtDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for neutron-metadata service
+        reason: Ready
+        status: "True"
+        type: ServiceNeutronMetadataDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for nova service
+        reason: Ready
+        status: "True"
+        type: ServiceNovaDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for ovn service
+        reason: Ready
+        status: "True"
+        type: ServiceOvnDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for reboot-os service
+        reason: Ready
+        status: "True"
+        type: ServiceRebootOsDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for redhat service
+        reason: Ready
+        status: "True"
+        type: ServiceRedhatDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for run-os service
+        reason: Ready
+        status: "True"
+        type: ServiceRunOsDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for ssh-known-hosts service
+        reason: Ready
+        status: "True"
+        type: ServiceSshKnownHostsDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for telemetry service
+        reason: Ready
+        status: "True"
+        type: ServiceTelemetryDeploymentReady
+      - lastTransitionTime: "2026-10-26T16:59:24Z"
+        message: Deployment ready for validate-network service
+        reason: Ready
+        status: "True"
+        type: ServiceValidateNetworkDeploymentReady
+    dnsClusterAddresses:
+    - 172.30.130.177
+    inventorySecretName: dataplanenodeset-openstack-data-plane
+    observedGeneration: 26
+    secretHashes:
+      ceilometer-compute-config-data: n5b7h5ch59h76h589h65dh59ch5f7h5d9h557h5b8h547h6bh676h6bh584h67bh664h55dh9ch695h56fh666h78h595hc9h58h5fch86h89h5dbhfq
+      cert-libvirt-default-edpm-compute-0: n54h588h664h65bhd5h557h657h57ch575h556h5ffh75h4hc4h646h95h57fh58fh667hb4h8bh5dbh54h5c8h8fh64bh694h597h58ch659h668h55cq
+      cert-libvirt-default-edpm-compute-1: n566h7bh54hdh5b8h69h647h7ch7dh5f4hd5h586hcbh5cfh65ch5b5h5fbh55bh8h94hc6h9bh565h86hcdh58fh8ch68dh5dhc8h577h694q
+      cert-neutron-metadata-default-edpm-compute-0: n646hch5b4h64h648h99h546h87h698h65fh8fh5c4h585h665hbch554h56ch575h679h5b8h599h594hbfh65dh5dh677h587h647h586h7dhdhdcq
+      cert-neutron-metadata-default-edpm-compute-1: n66bh656h64fh5cfh55ch87h55fhddhc9h557h6ch654h5b7h5bfh65bh685h549hbch5dbh68bh5d9hb4h68dh64dh575h56bhd5h68chc5h6h589h7fq
+      cert-ovn-default-edpm-compute-0: n58bh5b5hb7h56chd4h5d6h5b8hbdh67fhd8h594h87hd4h98hb8h558h56fh85h64bh5cfh596h697h5cdhdfh5f4hbh678h85h579h557h677h56bq
+      cert-ovn-default-edpm-compute-1: n544h584h94h564hbdh5d7h649hfbh5bfh57dh65bh687hf6h67dh77hb4h578h5cch5ffh65bh77hf8h99h587h84h646h64bh5d6hf6h5f6hbh695q
+      cert-telemetry-default-edpm-compute-0: n594h76hd9h544h568h659hf5h569h5c4h58ch8fhddh58dh598h5d5h5c9h76h8bh675h86h5dfh59hbbh697h5d4h557h667h88h5cfh5cbhbbh54bq
+      cert-telemetry-default-edpm-compute-1: n5f7h54bhfdh68dh57hd8h5dbh5f9h5d6hdch5f9h684h64fh666h66h6h57hc4h578h565h666hd9hc4h95h65bh655h685h5d4h67bh64fhc4h585q
+      libvirt-secret: n5f6h76h5cfh5dch65dh558h57ch654h76h67h5d4h588h55dh98h684h5c9h557h59bh54fhdh55dh555h5cdh97hbbh6dh5dh67ch588hcbh8h59fq
+      neutron-ovn-metadata-agent-neutron-config: n8dh56dhcch94hd6h684h5f8h9chb7h58ch66h9bhc4h594h54dh648h8ch9dh56h558hb7h69h5cfh58dh5bbh697h5b4h64dh99h5cbh5d8h56cq
+      nova-cell1-compute-config: n58dh586h589hb9h68dhb5h68bhc6hbch79h9dh689h5dh7dh566h57dh5d5h69h5c5h59dhb6hf6h646hf7h55h94h76h684hc9h5bfh574h54q
+      nova-metadata-neutron-config: n5cchd7h698h5c9h5f9h5f6h54bh8dh75h75hc4h8fh5c7h666h5dfh65h684h666h67bh5b6h545h5b9h5d9hc4h587h5dh56fh64fh56dh657h67h674q
+      nova-migration-ssh-key: n68ch59chb6h665h549h565h699h66bh77h66bhddh569h687h55fh675h75h566hffhchdbhf9h5c4h5d7h55bh545h84h5c4h76h54ch667h664h695q
+      redhat-registry: n54ch5bdh5f5h68ch7h9bh57h5cdh54fh5c5h79h86h558h9ch59bhf4h64fh77h676h9bhbdh567h55h64fh64bh568h7fh65fh589hd6h55bh9dq
+      subscription-manager: n9dh646h65h59h59dh5dh5bch4h59chffh559h68dh55dh695hb7h676hffh57h5dh5c9h96h57ch5fbhdbhdch569h8h55fh676h5d6h5d4h587q
+kind: List
 metadata:
-  name: openstack-data-plane-deploy
-  namespace: openstack
-spec:
-  nodeSets:
-    - openstack-data-plane
-  deploymentRequeueTime: 15
+  resourceVersion: ""

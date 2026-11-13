@@ -1,0 +1,193 @@
+apiVersion: v1
+items:
+- apiVersion: dataplane.openstack.org/v1beta1
+  kind: OpenStackDataPlaneNodeSet
+  metadata:
+    labels:
+      backup.openstack.org/category: dataplane
+      backup.openstack.org/restore: "true"
+      backup.openstack.org/restore-order: "60"
+    name: openstack-data-plane
+    namespace: openstack
+  spec:
+    env:
+    - name: ANSIBLE_FORCE_COLOR
+      value: "True"
+    networkAttachments:
+    - ctlplane
+    nodeTemplate:
+      ansible:
+        ansiblePort: 22
+        ansibleUser: root
+        ansibleVars:
+          edpm_bootstrap_legacy_network_packages: []
+          edpm_bootstrap_packages_bootstrap:
+          - driverctl
+          - lvm2
+          edpm_bootstrap_release_version_package: []
+          edpm_ceph_hci_pre_enabled_services:
+          - ceph_mon
+          - ceph_mgr
+          - ceph_osd
+          edpm_ceph_hci_pre_storage_ranges:
+          - 172.18.0.0/24
+          edpm_network_config_template: |
+            ---
+            {% set mtu_list = [ctlplane_mtu] %}
+            {% for network in nodeset_networks %}
+            {{ mtu_list.append(lookup('vars', networks_lower[network] ~ '_mtu')) }}
+            {%- endfor %}
+            {% set min_viable_mtu = mtu_list | max %}
+            interfaces:
+            - name: eno2
+              type: ethernet
+              state: up
+              mtu: {{ min_viable_mtu }}
+            - name: {{ neutron_physical_bridge_name }}
+              type: ovs-bridge
+              state: up
+              bridge:
+                port:
+                - name: eno2
+                - name: {{ neutron_physical_bridge_name }}
+            {% for network in nodeset_networks %}
+                - name: {{ networks_lower[network] }}
+                  vlan:
+                    mode: access
+                    tag: {{ lookup('vars', networks_lower[network] ~ '_vlan_id') }}
+            {% endfor %}
+            - name: {{ neutron_physical_bridge_name }}
+              type: ovs-interface
+              state: up
+              mtu: {{ ctlplane_mtu }}
+              ipv4:
+                address:
+                - ip: {{ ctlplane_ip }}
+                  prefix-length: {{ ctlplane_cidr }}
+                enabled: true
+                dhcp: false
+            {% for network in nodeset_networks %}
+            - name: {{ networks_lower[network] }}
+              type: ovs-interface
+              state: up
+              mtu: {{ lookup('vars', networks_lower[network] ~ '_mtu') }}
+              ipv4:
+                address:
+                - ip: {{ lookup('vars', networks_lower[network] ~ '_ip') }}
+                  prefix-length: {{ lookup('vars', networks_lower[network] ~ '_cidr') }}
+                enabled: true
+                dhcp: false
+            {% endfor %}
+          edpm_network_config_tool: nmstate
+          edpm_network_config_tool_nmstate_override: true
+          edpm_network_config_update: false
+          edpm_ovs_packages:
+          - openvswitch3.3
+          neutron_physical_bridge_mappings:
+          - datacentre:br-ex
+          neutron_physical_bridge_name: br-ex
+          rhc_release: "9.4"
+          rhc_repositories:
+          - name: '*'
+            state: disabled
+          - name: rhel-9-for-x86_64-baseos-eus-rpms
+            state: enabled
+          - name: rhel-9-for-x86_64-appstream-eus-rpms
+            state: enabled
+          - name: rhel-9-for-x86_64-highavailability-eus-rpms
+            state: enabled
+          - name: fast-datapath-for-rhel-9-x86_64-rpms
+            state: enabled
+          - name: rhceph-7-tools-for-rhel-9-x86_64-rpms
+            state: enabled
+          - name: rhoso-tools-18-for-rhel-9-x86_64-rpms
+            state: enabled
+          timesync_ntp_servers:
+          - hostname: 2.rhel.pool.ntp.org
+            iburst: true
+        ansibleVarsFrom:
+        - secretRef:
+            name: subscription-manager
+        - secretRef:
+            name: redhat-registry
+      ansibleSSHPrivateKeySecret: dataplane-ansible-ssh-private-key-secret
+      extraMounts:
+      - extraVolType: Ceph
+        mounts:
+        - mountPath: /etc/ceph
+          name: ceph
+          readOnly: true
+        volumes:
+        - name: ceph
+          secret:
+            secretName: ceph-conf-files
+      managementNetwork: ctlplane
+    nodes:
+      edpm-compute-0:
+        ansible:
+          ansibleHost: 192.168.122.100
+          ansibleUser: root
+          ansibleVars:
+            fqdn_internal_api: edpm-compute-0.internalapi.example.com
+        hostName: edpm-compute-0
+        networks:
+        - defaultRoute: false
+          fixedIP: 192.168.122.100
+          name: ctlplane
+          subnetName: subnet1
+        - fixedIP: 172.17.0.100
+          name: internalapi
+          subnetName: subnet1
+        - fixedIP: 172.18.0.100
+          name: storage
+          subnetName: subnet1
+        - fixedIP: 172.19.0.100
+          name: tenant
+          subnetName: subnet1
+      edpm-compute-1:
+        ansible:
+          ansibleHost: 192.168.122.101
+          ansibleUser: root
+          ansibleVars:
+            fqdn_internal_api: edpm-compute-1.internalapi.example.com
+        hostName: edpm-compute-1
+        networks:
+        - defaultRoute: false
+          fixedIP: 192.168.122.101
+          name: ctlplane
+          subnetName: subnet1
+        - fixedIP: 172.17.0.101
+          name: internalapi
+          subnetName: subnet1
+        - fixedIP: 172.18.0.101
+          name: storage
+          subnetName: subnet1
+        - fixedIP: 172.19.0.101
+          name: tenant
+          subnetName: subnet1
+    preProvisioned: true
+    secretMaxSize: 1048576
+    services:
+    - redhat
+    - download-cache
+    - bootstrap
+    - configure-network
+    - validate-network
+    - install-os
+    - ceph-hci-pre
+    - configure-os
+    - ssh-known-hosts
+    - run-os
+    - reboot-os
+    - install-certs
+    - ceph-client
+    - ovn
+    - neutron-metadata
+    - libvirt
+    - nova
+    - telemetry
+    tlsEnabled: true
+  status:
+kind: List
+metadata:
+  resourceVersion: ""

@@ -1,0 +1,108 @@
+apiVersion: dataplane.openstack.org/v1beta1
+kind: OpenStackDataPlaneDeployment
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"dataplane.openstack.org/v1beta1","kind":"OpenStackDataPlaneDeployment","metadata":{"annotations":{},"name":"openstack-compute-1-deploy","namespace":"openstack"},"spec":{"ansibleLimit":"edpm-compute-1","deploymentRequeueTime":15,"nodeSets":["openstack-data-plane"],"servicesOverride":["download-cache","bootstrap","configure-network","validate-network","install-os","ceph-hci-pre","configure-os","ssh-known-hosts","run-os","reboot-os","install-certs","ceph-client","ovn","neutron-metadata","libvirt","nova","telemetry"]}}
+  creationTimestamp: "2026-10-01T17:44:33Z"
+  generation: 1
+  name: openstack-compute-1-deploy
+  namespace: openstack
+  resourceVersion: "1881966"
+  uid: 9800e646-e1fa-40dc-b413-4486ebe08418
+spec:
+  ansibleEEEnvConfigMapName: openstack-aee-default-env
+  ansibleLimit: edpm-compute-1
+  backoffLimit: 6
+  deploymentRequeueTime: 15
+  nodeSets:
+  - openstack-data-plane
+  preserveJobs: true
+  servicesOverride:
+  - download-cache
+  - bootstrap
+  - configure-network
+  - validate-network
+  - install-os
+  - ceph-hci-pre
+  - configure-os
+  - ssh-known-hosts
+  - run-os
+  - reboot-os
+  - install-certs
+  - ceph-client
+  - ovn
+  - neutron-metadata
+  - libvirt
+  - nova
+  - telemetry
+status:
+  ansibleEEHashes:
+    bootstrap-openstack-compute-1-deploy-openstack-data-plane: nd8hb7h577h657h568h576h679hc7h94h9chcbh594h5fbhdch67dh64chd6h57dhb9h59fh5b6h65fh559hfchb4h5f7hf4h57fh67chfdh5c7h9dq
+    download-cache-openstack-compute-1-deploy-openstack-data-plane: n596h697hf6h567h57bh5cfh547hbfh665hd4h597h9bh6dhf4h95h5d7h6ch579h66bh59hch565h674h89h589hc8h5b8h6fh8ch65dh96h657q
+  ansibleExecutionSummaries:
+    bootstrap-openstack-compute-1-deploy-openstack-data-plane:
+      failedHostList:
+      - edpm-compute-1
+      failedHosts: 1
+      failurePercent: 100
+      totalHosts: 1
+      unreachableHostList: []
+      unreachableHosts: 0
+    download-cache-openstack-compute-1-deploy-openstack-data-plane:
+      failedHostList: []
+      failedHosts: 0
+      failurePercent: 0
+      totalHosts: 1
+      unreachableHostList: []
+      unreachableHosts: 0
+  conditions:
+  - lastTransitionTime: "2026-10-01T18:10:23Z"
+    message: 'Deployment error occurred nodeSet: openstack-data-plane error: backoff
+      limit reached for execution.name bootstrap-openstack-compute-1-deploy-openstack-data-plane
+      execution.namespace openstack execution.condition.message: Job has reached the
+      specified backoff limit'
+    reason: BackoffLimitExceeded
+    severity: Error
+    status: "False"
+    type: Ready
+  - lastTransitionTime: "2026-10-01T18:10:23Z"
+    message: 'Deployment error occurred nodeSet: openstack-data-plane error: backoff
+      limit reached for execution.name bootstrap-openstack-compute-1-deploy-openstack-data-plane
+      execution.namespace openstack execution.condition.message: Job has reached the
+      specified backoff limit'
+    reason: BackoffLimitExceeded
+    severity: Error
+    status: "False"
+    type: DeploymentReady
+  - lastTransitionTime: "2026-10-01T17:44:36Z"
+    message: Input data complete
+    reason: Ready
+    status: "True"
+    type: InputReady
+  nodeSetConditions:
+    openstack-data-plane:
+    - lastTransitionTime: "2026-10-01T18:10:23Z"
+      message: 'Deployment error occurred in bootstrap service error backoff limit
+        reached for execution.name bootstrap-openstack-compute-1-deploy-openstack-data-plane
+        execution.namespace openstack execution.condition.message: Job has reached
+        the specified backoff limit'
+      reason: BackoffLimitExceeded
+      severity: Error
+      status: "False"
+      type: NodeSetDeploymentReady
+    - lastTransitionTime: "2026-10-01T18:10:23Z"
+      message: 'Deployment error occurred in bootstrap service error backoff limit
+        reached for execution.name bootstrap-openstack-compute-1-deploy-openstack-data-plane
+        execution.namespace openstack execution.condition.message: Job has reached
+        the specified backoff limit'
+      reason: BackoffLimitExceeded
+      severity: Error
+      status: "False"
+      type: ServiceBootstrapDeploymentReady
+    - lastTransitionTime: "2026-10-01T18:10:23Z"
+      message: Deployment ready for download-cache service
+      reason: Ready
+      status: "True"
+      type: ServiceDownloadCacheDeploymentReady
+  observedGeneration: 1
